@@ -11,20 +11,18 @@ import (
 	"github.com/passeriform/conway-gox/internal/patterns"
 )
 
-func generateMap() cell_map.Map {
-	cellMap := cell_map.Create()
-	cells := patterns.GetPrimitive("PentaDecathlon", 0, 0)
-	cellMap.AddCells(cells)
-	return cellMap
-}
-
 func main() {
+	// Map Creation
+	cellMap := cell_map.Create()
+	cells := patterns.GetPrimitive("Toad", 0, 0)
+	cellMap.AddCells(cells)
+
 	// Game Creation
-	game := game.Create(generateMap(), time.Tick(100*time.Millisecond))
+	game := game.Create(cellMap, time.Tick(100*time.Millisecond))
+	defer game.Close()
 
 	// IO Handler
-	bounds := (<-game.State).GetBounds()
-	ioHandler := io.Create(bounds.Right-bounds.Left, bounds.Bottom-bounds.Top, 1)
+	ioHandler := io.Create()
 	defer ioHandler.Close()
 	events := make(chan tcell.Event, 1)
 	defer close(events)
@@ -36,20 +34,22 @@ func main() {
 	// Channel Handler
 	for {
 		select {
-		case s := <-game.State:
+		case s := <-game.StateChange:
 			ioHandler.Blit(s)
 		case ev := <-events:
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Rune() {
 				case 'q':
-					game.Exiting <- true
+					close(game.Exit)
+				case 'p':
+					game.Running = !game.Running
 				}
 			}
-		case e := <-game.Exiting:
-			if e {
-				os.Exit(0)
-			}
+		case <-game.Exit:
+			ioHandler.Close()
+			close(events)
+			os.Exit(0)
 		}
 	}
 }
