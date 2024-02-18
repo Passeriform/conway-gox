@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"time"
 
 	"github.com/gdamore/tcell"
@@ -41,15 +40,13 @@ func main() {
 			case *tcell.EventKey:
 				switch ev.Rune() {
 				case 'q':
-					close(game.Exit)
+					game.Close()
 				case 'p':
 					game.Running = !game.Running
 				}
 			}
 		case <-game.Exit:
-			ioHandler.Close()
-			close(events)
-			os.Exit(0)
+			break
 		}
 	}
 }
