@@ -10,6 +10,7 @@
         "ridx",
         "runewidth",
         "tcell",
+        "tmpl",
         "underpopulation"
     ]
 }
