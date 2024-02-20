@@ -1,7 +1,6 @@
 package cell
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/passeriform/conway-gox/internal/utility"
@@ -24,10 +23,6 @@ func (c *Cell) IsNeighbor(nc *Cell) bool {
 
 func (c *Cell) GetPosition() (int, int) {
 	return c.row, c.column
-}
-
-func (c *Cell) PrintPosition() string {
-	return fmt.Sprintf("%v, %v", c.row, c.column)
 }
 
 func (c *Cell) WillSurvive() bool {

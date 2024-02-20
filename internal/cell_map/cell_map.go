@@ -68,8 +68,6 @@ func (m Map) GetBounds() Bounds {
 }
 
 func (m *Map) Step() {
-	markedForKill := []*cell.Cell{}
-
 	// TODO: Move to generation_processor
 	nextCells, markedForKill := utility.Partition(m.cells, func(element *cell.Cell) bool {
 		return element.WillSurvive()
@@ -87,6 +85,20 @@ func (m *Map) Step() {
 
 	m.cells = nextCells
 	m.recomputeNeighbors()
+}
+
+func (m *Map) Rasterize(padding int) [][]bool {
+	raster := make([][]bool, 2*padding)
+	for idx := range raster {
+		raster[idx] = make([]bool, 2*padding)
+	}
+
+	for _, cell := range m.cells {
+		row, column := cell.GetPosition()
+		raster[padding+row][padding+column] = true
+	}
+
+	return raster
 }
 
 // TODO: Implement loadState and saveState

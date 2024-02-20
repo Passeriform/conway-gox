@@ -16,8 +16,8 @@ type GenerationProcessor struct {
 
 func FromCells(c []*cell.Cell) GenerationProcessor {
 	gp := GenerationProcessor{make(map[Coordinates]int)}
-	for cell := range c {
-		row, column := c[cell].GetPosition()
+	for _, cell := range c {
+		row, column := cell.GetPosition()
 		gp.cellHealth[Coordinates{row, column}] = -1
 	}
 	return gp
