@@ -23,13 +23,24 @@ func getServerDir() string {
 }
 
 func gameViewHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles(filepath.Join(getServerDir(), "templates", "index.tmpl")))
-	tmpl.Execute(w, cellMap)
+	tmpl := template.Must(template.ParseFiles(
+		filepath.Join(getServerDir(), "templates", "index.tmpl"),
+		filepath.Join(getServerDir(), "templates", "cellMap.tmpl"),
+	))
+	tmpl.ExecuteTemplate(w, "index", cellMap.Rasterize(10))
+}
+
+func nextStepHandler(w http.ResponseWriter, r *http.Request) {
+	cellMap.Step()
+	tmpl := template.Must(template.ParseFiles(
+		filepath.Join(getServerDir(), "templates", "cellMap.tmpl"),
+	))
+	tmpl.ExecuteTemplate(w, "cellMap", cellMap.Rasterize(10))
 }
 
 func main() {
 	cellMap = cell_map.Create()
-	cells := patterns.GetPrimitive("Toad", 0, 0)
+	cells := patterns.GetPrimitive("PentaDecathlon", 0, 0)
 	cellMap.AddCells(cells)
 
 	staticFs := http.FileServer(http.Dir(filepath.Join(getServerDir(), "static")))
@@ -37,6 +48,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.StripPrefix("/static/", staticFs))
 	mux.Handle("/game/", http.HandlerFunc(gameViewHandler))
+	mux.Handle("/step/", http.HandlerFunc(nextStepHandler))
 
 	fmt.Printf("Starting server at port 8080\n")
 	if err := http.ListenAndServe(":8080", mux); err != nil {

@@ -1,0 +1,13 @@
+{{ define "cellMap" }}
+<table cellpadding="0" cellspacing="0" border="0">
+    <tbody>
+        {{ range . }}
+        <tr>
+            {{ range . }}
+            <td>{{ if . }}⬛{{ else }}⬜{{ end }}<td/>
+            {{ end }}
+        </tr>
+        {{ end }}
+    </tbody>
+</table>
+{{ end }}
