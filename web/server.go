@@ -8,12 +8,15 @@ import (
 	"net/http"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/passeriform/conway-gox/internal/cell_map"
+	"github.com/passeriform/conway-gox/internal/game"
 	"github.com/passeriform/conway-gox/internal/patterns"
 )
 
-var cellMap cell_map.Map
+var updateRate = time.Duration(300) * time.Millisecond
+var currentGame game.Game
 var tmpl *template.Template
 
 func getServerDir() string {
@@ -26,33 +29,50 @@ func getServerDir() string {
 
 func gameViewHandler(w http.ResponseWriter, r *http.Request) {
 	if tmpl == nil {
-		tmpl = template.Must(template.New("index").ParseFiles(
+		tmpl = template.Must(template.New("index").Funcs(template.FuncMap{
+			"Tick": func() int64 {
+				return updateRate.Milliseconds()
+			},
+			"EncodeJson": func(padding int) [][2]int {
+				return currentGame.State.EncodeJson(padding)
+			},
+		}).ParseFiles(
 			filepath.Join(getServerDir(), "templates", "index.tmpl"),
 		))
 	}
-	if err := tmpl.ExecuteTemplate(w, "index", cellMap); err != nil {
+	if err := tmpl.ExecuteTemplate(w, "index", currentGame); err != nil {
+		panic(err)
+	}
+}
+
+// TODO: Use socket instead of polling on client
+// TODO: Use game channels and push update to the socket
+// TODO: Add multiple game spawner based on id
+
+func stateHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(currentGame.State.EncodeJson(10)); err != nil {
 		panic(err)
 	}
 }
 
 func nextStepHandler(w http.ResponseWriter, r *http.Request) {
-	cellMap.Step()
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(cellMap.EncodeJson(10)); err != nil {
-		panic(err)
-	}
+	currentGame.State.Step()
+	stateHandler(w, r)
 }
 
 func main() {
-	cellMap = cell_map.Create()
-	cells := patterns.GetPrimitive("PentaDecathlon", 0, 0)
+	var cellMap = cell_map.Create()
+	var cells = patterns.GetPrimitive("PentaDecathlon", 0, 0)
 	cellMap.AddCells(cells)
+	currentGame = game.Create(cellMap, time.Tick(updateRate))
 
 	staticFs := http.FileServer(http.Dir(filepath.Join(getServerDir(), "static")))
 
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.StripPrefix("/static/", staticFs))
 	mux.Handle("/game/", http.HandlerFunc(gameViewHandler))
+	mux.Handle("/state/", http.HandlerFunc(stateHandler))
 	mux.Handle("/step/", http.HandlerFunc(nextStepHandler))
 
 	fmt.Printf("Starting server at port 8080\n")
