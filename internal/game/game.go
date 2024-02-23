@@ -11,7 +11,7 @@ type Game struct {
 	Running     bool
 	StateChange chan cell_map.Map
 	Exit        chan struct{}
-	tick        <-chan time.Time
+	Tick        <-chan time.Time
 }
 
 func Create(m cell_map.Map, t <-chan time.Time) Game {
@@ -24,7 +24,7 @@ func (g *Game) Play() {
 	g.Running = true
 	for {
 		select {
-		case <-g.tick:
+		case <-g.Tick:
 			if g.Running {
 				g.State.Step()
 				g.StateChange <- *g.State

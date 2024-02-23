@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -13,6 +14,7 @@ import (
 )
 
 var cellMap cell_map.Map
+var tmpl *template.Template
 
 func getServerDir() string {
 	_, filename, _, ok := runtime.Caller(0)
@@ -23,19 +25,22 @@ func getServerDir() string {
 }
 
 func gameViewHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles(
-		filepath.Join(getServerDir(), "templates", "index.tmpl"),
-		filepath.Join(getServerDir(), "templates", "cellMap.tmpl"),
-	))
-	tmpl.ExecuteTemplate(w, "index", cellMap.Rasterize(10))
+	if tmpl == nil {
+		tmpl = template.Must(template.New("index").ParseFiles(
+			filepath.Join(getServerDir(), "templates", "index.tmpl"),
+		))
+	}
+	if err := tmpl.ExecuteTemplate(w, "index", cellMap); err != nil {
+		panic(err)
+	}
 }
 
 func nextStepHandler(w http.ResponseWriter, r *http.Request) {
 	cellMap.Step()
-	tmpl := template.Must(template.ParseFiles(
-		filepath.Join(getServerDir(), "templates", "cellMap.tmpl"),
-	))
-	tmpl.ExecuteTemplate(w, "cellMap", cellMap.Rasterize(10))
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(cellMap.EncodeJson(10)); err != nil {
+		panic(err)
+	}
 }
 
 func main() {
@@ -51,7 +56,7 @@ func main() {
 	mux.Handle("/step/", http.HandlerFunc(nextStepHandler))
 
 	fmt.Printf("Starting server at port 8080\n")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	if err := http.ListenAndServe("localhost:8080", mux); err != nil {
 		log.Fatal(err)
 	}
 }

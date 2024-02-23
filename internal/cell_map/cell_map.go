@@ -87,7 +87,7 @@ func (m *Map) Step() {
 	m.recomputeNeighbors()
 }
 
-func (m *Map) Rasterize(padding int) [][]bool {
+func (m Map) Rasterize(padding int) [][]bool {
 	raster := make([][]bool, 2*padding)
 	for idx := range raster {
 		raster[idx] = make([]bool, 2*padding)
@@ -99,6 +99,17 @@ func (m *Map) Rasterize(padding int) [][]bool {
 	}
 
 	return raster
+}
+
+func (m Map) EncodeJson(padding int) [][2]int {
+	jsonData := [][2]int{}
+
+	for _, cell := range m.GetCells() {
+		row, column := cell.GetPosition()
+		jsonData = append(jsonData, [2]int{padding + row, padding + column})
+	}
+
+	return jsonData
 }
 
 // TODO: Implement loadState and saveState

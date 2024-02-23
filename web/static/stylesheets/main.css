@@ -1,9 +1,23 @@
-body {
+html, body, main {
+    margin: 0;
+    width: 100%;
+    height: 100%;
     font-family: sans-serif;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
 }
 
 table {
     border-collapse: collapse;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 td {

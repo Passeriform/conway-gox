@@ -5,17 +5,27 @@
         <title>Conway's Game of Life - Go and Htmx</title>
         <link rel="icon" type="image/x-icon" href="/static/assets/favicon.ico">
         <link rel="stylesheet" href="/static/stylesheets/main.css">
+        <script src="/static/js/main.js"></script>
         <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     </head>
     <body>
         <main>
-            <h1>Conway's Game of Life</h1>
-            <p>Powered by tiny go server and htmx.</p>
-            {{ template "cellMap" . }}
-            <button hx-post="/step/" hx-target="previous table">
-                Step Forward
-            </button>
+            <div id="intro">
+                <h1>Conway's Game of Life</h1>
+                <p>Powered by tiny go server and htmx.</p>
+            </div>
+            <canvas id="game-map"></canvas>
+            <div id="controls">
+                <button hx-swap="none" hx-post="/step/" hx-on::after-request="updateState(JSON.parse(event.detail.xhr.response))">
+                    Step Forward
+                </button>
         </main>
     </body>
 </html>
+<script>
+window.onload = () => {
+    const state = {{ .EncodeJson 10 }}
+    loadResizer(state)
+}
+</script>
 {{ end }}
