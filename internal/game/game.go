@@ -7,33 +7,24 @@ import (
 )
 
 type Game struct {
-	State       *cell_map.Map
-	Running     bool
-	StateChange chan cell_map.Map
-	Exit        chan struct{}
-	Tick        <-chan time.Time
+	State   *cell_map.Map
+	Running bool
+	Tick    <-chan time.Time
 }
 
-func Create(m cell_map.Map, t <-chan time.Time) Game {
-	stateChange := make(chan cell_map.Map)
-	exit := make(chan struct{})
-	return Game{&m, false, stateChange, exit, t}
+func New(m cell_map.Map, t <-chan time.Time) Game {
+	return Game{&m, false, t}
 }
 
-func (g *Game) Play() {
+func (g *Game) Play(stateChannel chan<- cell_map.Map) {
 	g.Running = true
 	for {
 		select {
 		case <-g.Tick:
 			if g.Running {
 				g.State.Step()
-				g.StateChange <- *g.State
+				stateChannel <- *g.State
 			}
 		}
 	}
-}
-
-func (g *Game) Close() {
-	close(g.StateChange)
-	close(g.Exit)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gdamore/tcell"
@@ -12,41 +13,34 @@ import (
 
 func main() {
 	// Map Creation
-	cellMap := cell_map.Create()
+	cellMap := cell_map.New()
 	cells := patterns.GetPrimitive("Toad", 0, 0)
 	cellMap.AddCells(cells)
 
 	// Game Creation
-	game := game.Create(cellMap, time.Tick(100*time.Millisecond))
-	defer game.Close()
+	game := game.New(cellMap, time.Tick(100*time.Millisecond))
 
 	// IO Handler
-	ioHandler := io.Create()
+	ioHandler, err := io.NewTerminal()
+	if err != nil {
+		fmt.Printf("Could not initialize terminal IO handler: %v", err)
+		return
+	}
 	defer ioHandler.Close()
-	events := make(chan tcell.Event, 1)
-	defer close(events)
 
 	// Go Routines
-	go game.Play()
-	go ioHandler.ListenEvents(events)
-
-	// Channel Handler
-	for {
-		select {
-		case s := <-game.StateChange:
-			ioHandler.Blit(s)
-		case ev := <-events:
-			switch ev := ev.(type) {
-			case *tcell.EventKey:
-				switch ev.Rune() {
-				case 'q':
-					game.Close()
-				case 'p':
-					game.Running = !game.Running
-				}
+	stateChannel := make(chan cell_map.Map, 1)
+	eventChannel := make(chan tcell.Event, 1)
+	go game.Play(stateChannel)
+	go ioHandler.Blit(stateChannel)
+	go ioHandler.ListenEvents(eventChannel)
+	for e := range eventChannel {
+		switch e := e.(type) {
+		case *tcell.EventKey:
+			switch e.Rune() {
+			case 'p':
+				game.Running = !game.Running
 			}
-		case <-game.Exit:
-			break
 		}
 	}
 }

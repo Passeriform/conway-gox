@@ -5,6 +5,7 @@
         "cidx",
         "Fini",
         "gdamore",
+        "htmx",
         "mattn",
         "Penta",
         "Resizer",
@@ -12,6 +13,7 @@
         "runewidth",
         "tcell",
         "tmpl",
-        "underpopulation"
+        "underpopulation",
+        "Upgrader"
     ]
 }

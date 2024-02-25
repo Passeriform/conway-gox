@@ -12,7 +12,7 @@ type Cell struct {
 	Neighbors []*Cell
 }
 
-func Create(r int, c int) Cell {
+func New(r int, c int) Cell {
 	return Cell{r, c, []*Cell{}}
 }
 

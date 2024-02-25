@@ -32,7 +32,7 @@ func (m *Map) recomputeNeighbors() {
 	}
 }
 
-func Create() Map {
+func New() Map {
 	return Map{cells: []*cell.Cell{}}
 }
 

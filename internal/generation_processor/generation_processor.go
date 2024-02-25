@@ -60,7 +60,7 @@ func (gp *GenerationProcessor) Reduce(minimum int, maximum int) {
 func (gp GenerationProcessor) ToCells() []*cell.Cell {
 	cells := []*cell.Cell{}
 	for key := range gp.cellHealth {
-		newCell := cell.Create(key.Row, key.Column)
+		newCell := cell.New(key.Row, key.Column)
 		cells = append(cells, &newCell)
 	}
 	return cells

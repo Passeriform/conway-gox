@@ -3,6 +3,7 @@ package io
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/gdamore/tcell"
 
@@ -13,66 +14,70 @@ import (
 type Terminal struct {
 	screen    tcell.Screen
 	zoomLevel float64
+	once      sync.Once
 }
 
 var aliveCell rune = '\u2B1C'
-var deadCell rune = '\u2B1B'
 
-func Create() Terminal {
+func NewTerminal() (Terminal, error) {
 	tcell.SetEncodingFallback(tcell.EncodingFallbackASCII)
 
 	s, err := tcell.NewScreen()
 
 	if err != nil {
+		// TODO: Add more logs, pipe all to stderr and use Fprintf instead of Printf
 		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		return Terminal{}, err
 	}
 
 	if err := s.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		return Terminal{}, err
 	}
 
 	s.SetStyle(tcell.StyleDefault)
 
 	s.Clear()
 
-	return Terminal{s, 1}
+	return Terminal{screen: s, zoomLevel: 1}, nil
 }
 
-func (t *Terminal) Blit(cell_map cell_map.Map) {
-	t.screen.Clear()
-	width, height := t.screen.Size()
-	widthOffset, heightOffset := width/2, height/2
-	for _, cell := range cell_map.GetCells() {
-		row, column := cell.GetPosition()
-		t.screen.SetContent(column+widthOffset, row+heightOffset, aliveCell, nil, tcell.StyleDefault)
-	}
-	t.screen.Show()
-}
-
-func (t *Terminal) ListenEvents(event chan<- tcell.Event) (closed bool) {
+func (t *Terminal) Blit(mapChannel <-chan cell_map.Map) {
 	defer func() {
-		if recover() != nil {
-			closed = true
+		t.Close()
+	}()
+
+	for m := range mapChannel {
+		t.screen.Clear()
+		width, _ := t.screen.Size()
+		for _, cell := range m.EncodeJson(width / 2) {
+			t.screen.SetContent(cell[1], cell[0], aliveCell, nil, tcell.StyleDefault)
 		}
+		t.screen.Show()
+	}
+}
+
+func (t *Terminal) ListenEvents(eventChannel chan<- tcell.Event) {
+	defer func() {
+		t.Close()
 	}()
 
 	for {
 		ev := t.screen.PollEvent()
-		event <- ev
+		eventChannel <- ev
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
 			t.screen.Sync()
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				t.Close()
-				return true
+				return
 			}
 		}
 	}
 }
 
 func (t *Terminal) Close() {
-	t.screen.Fini()
+	t.once.Do(func() {
+		t.screen.Fini()
+	})
 }
