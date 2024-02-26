@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -25,6 +26,11 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+type SocketMessage struct {
+	Action  string      `json:"action"`
+	Payload interface{} `json:"payload,omitempty"`
+}
+
 type Socket struct {
 	conn *websocket.Conn
 	once sync.Once
@@ -33,6 +39,7 @@ type Socket struct {
 func NewSocket(w http.ResponseWriter, r *http.Request) (Socket, error) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error occurred while initializing socket: %v\n", err)
 		return Socket{}, err
 	}
 	return Socket{conn: conn}, nil
@@ -44,22 +51,35 @@ func (s *Socket) Blit(mapChannel <-chan cell_map.Map) {
 	}()
 
 	for cm := range mapChannel {
-		s.conn.SetWriteDeadline(time.Now().Add(writeWait))
-		s.conn.SetPingHandler(func(string) error { s.conn.SetWriteDeadline(time.Now().Add(writeWait)); return nil })
+		writeDeadlineFunc := func(string) error {
+			if err := s.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to set write deadline on socket: %v\n", err)
+				return err
+			}
+			return nil
+		}
+		if err := writeDeadlineFunc(""); err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to set first write deadline: %v\n", err)
+			return
+		}
+		s.conn.SetPingHandler(writeDeadlineFunc)
 		w, err := s.conn.NextWriter(websocket.TextMessage)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to fetch connection writer: %v\n", err)
 			return
 		}
 		message := cm.EncodeJson(10)
 		jsonBytes, err := json.Marshal(message)
 		if err != nil {
-			fmt.Printf("Unable to marshal message %v", message)
+			fmt.Fprintf(os.Stderr, "Unable to marshal message: %v\n", message)
+			return
 		}
-		w.Write(jsonBytes)
+		if _, err := w.Write(jsonBytes); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed at writing message to the writer: %v\n", err)
+			return
+		}
 	}
 }
-
-// TODO: Remove all panic calls
 
 func (s *Socket) ListenEvents(eventChannel chan<- SocketMessage) {
 	defer func() {
@@ -67,17 +87,28 @@ func (s *Socket) ListenEvents(eventChannel chan<- SocketMessage) {
 	}()
 
 	s.conn.SetReadLimit(maxMessageSize)
-	s.conn.SetReadDeadline(time.Now().Add(pongWait))
-	s.conn.SetPongHandler(func(string) error { s.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	readDeadlineFunc := func(string) error {
+		if err := s.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			return fmt.Errorf("unable to set read deadline on socket: %v", err)
+		}
+		return nil
+	}
+	if err := readDeadlineFunc(""); err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to set first read deadline: %v\n", err)
+		return
+	}
+	s.conn.SetPongHandler(readDeadlineFunc)
 
 	for {
 		_, message, err := s.conn.ReadMessage()
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to read message on socket: %v\n", err)
 			return
 		}
 		var messageObject SocketMessage
 		if err := json.Unmarshal(message, &messageObject); err != nil {
-			fmt.Printf("Unable to unmarshal message %v", message)
+			fmt.Fprintf(os.Stderr, "Unable to unmarshal message: %v\n", message)
+			return
 		}
 		eventChannel <- messageObject
 	}
@@ -85,7 +116,11 @@ func (s *Socket) ListenEvents(eventChannel chan<- SocketMessage) {
 
 func (s *Socket) Close() {
 	s.once.Do(func() {
-		s.conn.WriteMessage(websocket.CloseMessage, []byte{})
-		s.conn.Close()
+		if err := s.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to write close message to the connection in deferred close method: %v", err)
+		}
+		if err := s.conn.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to close the socket connection in deferred close method: %v", err)
+		}
 	})
 }

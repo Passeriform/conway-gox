@@ -23,6 +23,7 @@ func FromCells(c []*cell.Cell) GenerationProcessor {
 	return gp
 }
 
+// TODO: Include survival logic in the processor, consider removing originalFound check.
 func (gp *GenerationProcessor) Expand(influence int) {
 	cellHealth := make(map[Coordinates]int)
 	for cellKey := range gp.cellHealth {

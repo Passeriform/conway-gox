@@ -10,7 +10,7 @@
         <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
     </head>
     <body>
-        <main hx-ext="ws" ws-connect="/connect/" hx-trigger="load" hx-on::after>
+        <main hx-ext="ws" ws-connect="/connect/{{ .Id }}" hx-trigger="load">
             <div id="intro">
                 <h1>Conway's Game of Life</h1>
                 <p>Powered by tiny go server and htmx.</p>
@@ -21,7 +21,7 @@
                     Step Forward
                 </button>
                 <button hx-swap="none" ws-send name="action" value="togglePause">
-                    {{ if .Running }} Pause {{ else }} Play {{ end }}
+                    {{ if .Game.Running }} Pause {{ else }} Play {{ end }}
                 </button>
             </div>
         </main>

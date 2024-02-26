@@ -10,7 +10,7 @@ import (
 	"github.com/passeriform/conway-gox/internal/cell_map"
 )
 
-// TODO: Implement inheritance from IO base class
+// TODO: Implement generic interface for all IO handlers and use in GameSession
 type Terminal struct {
 	screen    tcell.Screen
 	zoomLevel float64
@@ -25,13 +25,12 @@ func NewTerminal() (Terminal, error) {
 	s, err := tcell.NewScreen()
 
 	if err != nil {
-		// TODO: Add more logs, pipe all to stderr and use Fprintf instead of Printf
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprintf(os.Stderr, "Could not create an instance of the terminal screen: %v\n", err)
 		return Terminal{}, err
 	}
 
 	if err := s.Init(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprintf(os.Stderr, "Could not initialize the terminal screen: %v\n", err)
 		return Terminal{}, err
 	}
 
