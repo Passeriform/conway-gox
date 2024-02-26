@@ -9,7 +9,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/conway/conway.go"
+            "program": "${workspaceFolder}/cmd/cli/cli.go"
         }
         {
             "name": "Web Server",

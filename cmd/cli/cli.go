@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/gdamore/tcell"
@@ -11,27 +12,31 @@ import (
 	"github.com/passeriform/conway-gox/internal/patterns"
 )
 
+// TODO: Cli is broken. Fix required
+
 func main() {
 	// Map Creation
 	cellMap := cell_map.New()
-	cells := patterns.GetPrimitive("Toad", 0, 0)
+	cells, err := patterns.GetPrimitive("Toad", 0, 0)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error occurred while fetching primitive: %v", err)
+	}
 	cellMap.AddCells(cells)
 
 	// Game Creation
-	game := game.New(cellMap, time.Tick(100*time.Millisecond))
+	game, stateChannel := game.New(cellMap, time.Tick(100*time.Millisecond))
 
 	// IO Handler
 	ioHandler, err := io.NewTerminal()
 	if err != nil {
-		fmt.Printf("Could not initialize terminal IO handler: %v", err)
+		fmt.Fprintf(os.Stderr, "Could not initialize terminal IO handler: %v\n", err)
 		return
 	}
 	defer ioHandler.Close()
 
 	// Go Routines
-	stateChannel := make(chan cell_map.Map, 1)
-	eventChannel := make(chan tcell.Event, 1)
-	go game.Play(stateChannel)
+	eventChannel := make(chan tcell.Event)
+	go game.Play()
 	go ioHandler.Blit(stateChannel)
 	go ioHandler.ListenEvents(eventChannel)
 	for e := range eventChannel {
