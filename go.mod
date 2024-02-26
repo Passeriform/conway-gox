@@ -1,6 +1,6 @@
 module github.com/passeriform/conway-gox
 
-go 1.21
+go 1.22
 
 require github.com/gdamore/tcell v1.4.0 // direct
 
