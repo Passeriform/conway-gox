@@ -126,6 +126,9 @@ func main() {
 	mux.Handle("GET /connect/{id}", http.HandlerFunc(connectClientHandler))
 	mux.Handle("GET /game/{id}", http.HandlerFunc(gameViewHandler))
 	mux.Handle("GET /game/", http.HandlerFunc(newGameHandler))
+	mux.Handle("GET /", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/game/", http.StatusSeeOther)
+	}))
 
 	fmt.Fprintf(os.Stdout, "Starting server at %v\n", host)
 	if err := http.ListenAndServe(host, mux); err != nil {
