@@ -68,7 +68,7 @@ func (s *Socket) Blit(mapChannel <-chan cell_map.Map) {
 			fmt.Fprintf(os.Stderr, "Unable to fetch connection writer: %v\n", err)
 			return
 		}
-		message := cm.EncodeJson(10)
+		message := cm.EncodeJson(0)
 		jsonBytes, err := json.Marshal(message)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to marshal message: %v\n", message)

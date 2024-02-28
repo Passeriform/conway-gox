@@ -14,7 +14,7 @@ function updateState(cells) {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.save()
     cells.forEach((cell) => {
-        ctx.fillRect(cell[1] * cellSize, cell[0] * cellSize, cellSize, cellSize)
+        ctx.fillRect((canvas.width / 2) + (cell[1] * cellSize), (canvas.height / 2) + (cell[0] * cellSize), cellSize, cellSize)
     })
     ctx.restore()
 }

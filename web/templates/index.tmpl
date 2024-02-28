@@ -11,12 +11,11 @@
     </head>
     <body>
         <main hx-ext="ws" ws-connect="/connect/{{ .Id }}" hx-trigger="load">
-            <div id="intro">
-                <h1>Conway's Game of Life</h1>
-                <p>Powered by tiny go server and htmx.</p>
+            <div id="intro" class="row">
+                <h1>Conway's Game of Life<small>Powered by tiny go server and htmx.</small></h1>
             </div>
-            <canvas id="game-map" data-state=""></canvas>
-            <div id="controls">
+            <canvas id="game-map"></canvas>
+            <div id="controls" class="row">
                 <button hx-swap="none" ws-send name="action" value="step">
                     Step Forward
                 </button>
