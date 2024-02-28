@@ -18,7 +18,6 @@ import (
 
 const (
 	gameTick = 300 * time.Millisecond
-	host     = "localhost:8080"
 )
 
 var (
@@ -27,6 +26,10 @@ var (
 )
 
 func getServerDir() string {
+	e, ok := os.LookupEnv("ENVIRONMENT")
+	if ok && e != "DEVELOPMENT" {
+		return "./"
+	}
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		fmt.Fprintln(os.Stderr, "Could not fetch runtime caller to get server directory.")
@@ -89,7 +92,7 @@ func newGameHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Could not initialize game: %v", err), http.StatusInternalServerError)
 	}
 	games[game.Id] = &game
-	http.Redirect(w, r, "/game/"+game.Id, http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/game/%v", game.Id), http.StatusSeeOther)
 }
 
 func connectClientHandler(w http.ResponseWriter, r *http.Request) {
@@ -130,8 +133,19 @@ func main() {
 		http.Redirect(w, r, "/game/", http.StatusSeeOther)
 	}))
 
-	fmt.Fprintf(os.Stdout, "Starting server at %v\n", host)
-	if err := http.ListenAndServe(host, mux); err != nil {
+	host := "localhost"
+	e, ok := os.LookupEnv("ENVIRONMENT")
+	if ok && e != "DEVELOPMENT" {
+		host = ""
+	}
+
+	port, ok := os.LookupEnv("PORT")
+	if !ok {
+		port = "8080"
+	}
+
+	fmt.Fprintf(os.Stdout, "Starting server at %v:%v\n", host, port)
+	if err := http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), mux); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to launch the server: %v\n", err)
 		os.Exit(1)
 	}
