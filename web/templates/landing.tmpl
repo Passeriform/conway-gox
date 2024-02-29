@@ -1,0 +1,23 @@
+{{ define "page" }}
+<main id="main" class="fade-out">
+    {{ template "heading" }}
+    <div id="content" class="content-block" class="row">
+        <p>This is an implementation of multiple concurrent 'game of life' games running on a thin Go server, served to the client via templates, supercharged with HTMX.</p>
+    </div>
+    <div id="post-content" class="column content-block">
+        <label for="pattern">Choose a starting pattern:</label>
+        <select name="pattern">
+        {{ range $key, $value := . }}
+            <optgroup label="{{ $key }}">
+                {{ range $value }}
+                    <option value="{{ . }}">{{ . }}</option>
+                {{ end }}
+            </optgroup>
+        {{ end }}
+        </select>
+        <button hx-get="/game/" hx-push-url="true" hx-trigger="click" hx-include="[name='pattern']" hx-target="#main" hx-swap="outerHTML swap:0.2s settle:0.1s" hx-indicator="#loader">
+            Start
+        </button>
+    </div>
+</main>
+{{ end }}

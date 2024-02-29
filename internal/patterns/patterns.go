@@ -9,6 +9,15 @@ import (
 
 // TODO: Convert to separate saveState files and use via load
 
+type PatternType string
+
+const (
+	Stable     PatternType = "stable"
+	Oscillator PatternType = "oscillator"
+	Generator  PatternType = "generator"
+	Periodic   PatternType = "periodic"
+)
+
 func GetPrimitive(t string, r int, c int) ([]cell.Cell, error) {
 	if t == "Block" {
 		return []cell.Cell{
@@ -165,4 +174,26 @@ func GetPrimitive(t string, r int, c int) ([]cell.Cell, error) {
 	}
 
 	return nil, errors.New(fmt.Sprintf("Preset pattern not found: %v", t))
+}
+
+func GetAvailablePatterns() map[PatternType][]string {
+	return map[PatternType][]string{
+		Stable: {
+			"Block",
+			"Beehive",
+			"Loaf",
+			"Boat",
+			"Tub",
+			"AircraftCarrier",
+		},
+		Oscillator: {
+			"Blinker",
+			"Toad",
+			"Beacon",
+		},
+		Periodic: {
+			"Pulsar",
+			"PentaDecathlon",
+		},
+	}
 }

@@ -21,9 +21,38 @@ const (
 )
 
 var (
-	tmpl  *template.Template
+	tmpl  map[string]*template.Template   = make(map[string]*template.Template)
 	games map[string]*session.GameSession = make(map[string]*session.GameSession)
 )
+
+func getTemplatePaths(tmplNames ...string) []string {
+	tmplPaths := make([]string, len(tmplNames))
+	for idx, name := range tmplNames {
+		tmplPaths[idx] = filepath.Join(getServerDir(), "templates", fmt.Sprintf("%v.tmpl", name))
+	}
+	return tmplPaths
+}
+
+func generateTemplate(tmplName string, fnMap template.FuncMap) (*template.Template, error) {
+	if tmpl[tmplName] != nil {
+		return tmpl[tmplName], nil
+	}
+
+	newTmpl := template.New(tmplName)
+	if fnMap != nil {
+		newTmpl.Funcs(fnMap)
+	}
+	switch tmplName {
+	case "landing":
+		return newTmpl.ParseFiles(getTemplatePaths("shell", "landing", "heading")...)
+	case "game":
+		return newTmpl.ParseFiles(getTemplatePaths("shell", "game", "heading")...)
+	case "gameSwap":
+		return newTmpl.ParseFiles(getTemplatePaths("game", "heading")...)
+	default:
+		return nil, fmt.Errorf("unknown template requested: %v", tmplName)
+	}
+}
 
 func getServerDir() string {
 	e, ok := os.LookupEnv("ENVIRONMENT")
@@ -38,9 +67,9 @@ func getServerDir() string {
 	return filepath.Dir(filename)
 }
 
-func spawnGame() (session.GameSession, error) {
+func spawnGame(pattern string) (session.GameSession, error) {
 	cellMap := cell_map.New()
-	cells, err := patterns.GetPrimitive("PentaDecathlon", 0, 0)
+	cells, err := patterns.GetPrimitive(pattern, 0, 0)
 	if err != nil {
 		return session.GameSession{}, fmt.Errorf("unable to fetch the primitive pattern: %v", err)
 	}
@@ -61,7 +90,19 @@ func spawnGame() (session.GameSession, error) {
 	return session.NewGameSession(cellMap, eventHandler, session.GameSessionConfiguration{Tick: gameTick}), nil
 }
 
-func gameViewHandler(w http.ResponseWriter, r *http.Request) {
+func landingHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := generateTemplate("landing", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v", err)
+		os.Exit(1)
+	}
+	if err := tmpl.ExecuteTemplate(w, "shell", patterns.GetAvailablePatterns()); err != nil {
+		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v", err)
+		os.Exit(1)
+	}
+}
+
+func gameSwapHandler(w http.ResponseWriter, r *http.Request) {
 	gameId := r.PathValue("id")
 
 	_, found := games[gameId]
@@ -73,26 +114,69 @@ func gameViewHandler(w http.ResponseWriter, r *http.Request) {
 
 	gameSession := games[gameId]
 
-	if tmpl == nil {
-		// TODO: Set initial state for encode JSON from template directly once sessioned games are implemented.
-		tmpl = template.Must(template.New("index").ParseFiles(
-			filepath.Join(getServerDir(), "templates", "index.tmpl"),
-		))
+	tmpl, err := generateTemplate("gameSwap", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v", err)
+		os.Exit(1)
 	}
-	if err := tmpl.ExecuteTemplate(w, "index", gameSession); err != nil {
+
+	if err := tmpl.ExecuteTemplate(w, "page", gameSession); err != nil {
+		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v", err)
+		os.Exit(1)
+	}
+}
+
+// TODO: Add a spinner loader from /connect/ call until canvas first blit is done
+// TODO: Give light/dark mode
+// TODO: Add ability to draw on canvas
+// TODO: Add save and load states
+// TODO: Add rewind functionality
+// TODO: Fix socket drop and add reconnection logic
+// TODO: Add UI messages for server connection/socket state/iteration counter
+// TODO: Fix Play/Pause UI button text change
+
+func gameViewHandler(w http.ResponseWriter, r *http.Request) {
+	if h := r.Header["Hx-Request"]; h != nil {
+		gameSwapHandler(w, r)
+		return
+	}
+
+	gameId := r.PathValue("id")
+
+	_, found := games[gameId]
+
+	if !found {
+		newGameHandler(w, r)
+		return
+	}
+
+	gameSession := games[gameId]
+
+	tmpl, err := generateTemplate("game", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v", err)
+		os.Exit(1)
+	}
+
+	// TODO: Set initial state for encode JSON from template directly once sessioned games are implemented.
+	if err := tmpl.ExecuteTemplate(w, "shell", gameSession); err != nil {
 		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v", err)
 		os.Exit(1)
 	}
 }
 
 func newGameHandler(w http.ResponseWriter, r *http.Request) {
-	game, err := spawnGame()
+	pattern := r.URL.Query().Get("pattern")
+	if pattern == "" {
+		pattern = "PentaDecathlon"
+	}
+	game, err := spawnGame(pattern)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to spawn a new game: %v", err)
 		http.Error(w, fmt.Sprintf("Could not initialize game: %v", err), http.StatusInternalServerError)
 	}
 	games[game.Id] = &game
-	http.Redirect(w, r, fmt.Sprintf("/game/%v", game.Id), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/game/%v", game.Id), http.StatusFound)
 }
 
 func connectClientHandler(w http.ResponseWriter, r *http.Request) {
@@ -129,9 +213,7 @@ func main() {
 	mux.Handle("GET /connect/{id}", http.HandlerFunc(connectClientHandler))
 	mux.Handle("GET /game/{id}", http.HandlerFunc(gameViewHandler))
 	mux.Handle("GET /game/", http.HandlerFunc(newGameHandler))
-	mux.Handle("GET /", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/game/", http.StatusSeeOther)
-	}))
+	mux.Handle("GET /", http.HandlerFunc(landingHandler))
 
 	host := "localhost"
 	e, ok := os.LookupEnv("ENVIRONMENT")
