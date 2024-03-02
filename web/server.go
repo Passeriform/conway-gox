@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/passeriform/conway-gox/internal/cell_map"
-	"github.com/passeriform/conway-gox/internal/game"
 	"github.com/passeriform/conway-gox/internal/io"
 	"github.com/passeriform/conway-gox/internal/patterns"
 	"github.com/passeriform/conway-gox/web/session"
@@ -74,20 +73,7 @@ func spawnGame(pattern string) (session.GameSession, error) {
 		return session.GameSession{}, fmt.Errorf("unable to fetch the primitive pattern: %v", err)
 	}
 	cellMap.AddCells(cells)
-	eventHandler := func(input <-chan io.SocketMessage, currentGame *game.Game) {
-		for e := range input {
-			switch e.Action {
-			case "loadState":
-			case "saveState":
-			case "togglePause":
-				currentGame.Running = !currentGame.Running
-			case "step":
-				currentGame.Running = false
-				currentGame.Step()
-			}
-		}
-	}
-	return session.NewGameSession(cellMap, eventHandler, session.GameSessionConfiguration{Tick: gameTick}), nil
+	return session.NewGameSession(cellMap, session.GameSessionConfiguration{Tick: gameTick}), nil
 }
 
 func landingHandler(w http.ResponseWriter, r *http.Request) {
@@ -190,14 +176,35 @@ func connectClientHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// IO Handler
-	ioSocket, err := io.NewSocket(w, r)
+	ioSocket, listenerChannel, err := io.NewSocket(w, r)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not initialize socket IO handler: %v\n", err)
 		http.Error(w, fmt.Sprintf("Could not initialize socket: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	gameSession.ConnectIO(&ioSocket)
+	eventHandler := func(listener <-chan io.SocketMessage) {
+		for e := range listener {
+			switch e.Action {
+			case "loadState":
+			case "saveState":
+			case "togglePause":
+				gameSession.Game.Running = !gameSession.Game.Running
+				ioSocket.MessageChannel <- io.SocketMessage{Action: "pauseToggled", Payload: gameSession.Game.Running}
+			case "step":
+				if gameSession.Game.Running {
+					gameSession.Game.Running = false
+					ioSocket.MessageChannel <- io.SocketMessage{Action: "pauseToggled", Payload: gameSession.Game.Running}
+				}
+				gameSession.Game.Step()
+			}
+		}
+	}
+
+	gameSession.ConnectIO(&ioSocket, listenerChannel, eventHandler)
+
+	go ioSocket.ListenEvents()
+	go ioSocket.SendMessages()
 }
 
 func main() {

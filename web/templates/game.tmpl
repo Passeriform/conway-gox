@@ -2,14 +2,14 @@
 <head hx-head="append">
     <script src="/static/js/main.js"></script>
 </head>
-<main id="main" class="fade-in">
+<main id="main" class="fade-in" hx-ext="ws" ws-connect="/connect/{{ .Id }}" hx-trigger="load">
     {{ template "heading" }}
     <canvas id="content" class="content-block"></canvas>
-    <div id="post-content" class="row content-block" hx-ext="ws" ws-connect="/connect/{{ .Id }}" hx-trigger="load">
+    <div id="post-content" class="row content-block">
         <button hx-swap="none" ws-send name="action" value="step">
             Step Forward
         </button>
-        <button hx-swap="none" ws-send name="action" value="togglePause">
+        <button id="togglePause" hx-swap="none" ws-send name="action" value="togglePause">
             {{ if .Game.Running }} Pause {{ else }} Play {{ end }}
         </button>
     </div>

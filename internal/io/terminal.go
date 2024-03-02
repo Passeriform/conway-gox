@@ -13,6 +13,7 @@ import (
 // TODO: Implement generic interface for all IO handlers and use in GameSession
 type Terminal struct {
 	screen    tcell.Screen
+	Listeners []chan<- tcell.Event
 	zoomLevel float64
 	once      sync.Once
 }
@@ -56,14 +57,20 @@ func (t *Terminal) Blit(mapChannel <-chan cell_map.Map) {
 	}
 }
 
-func (t *Terminal) ListenEvents(eventChannel chan<- tcell.Event) {
+func (s *Terminal) AddListener(eventChannel chan<- tcell.Event) {
+	s.Listeners = append(s.Listeners, eventChannel)
+}
+
+func (t *Terminal) ListenEvents() {
 	defer func() {
 		t.Close()
 	}()
 
 	for {
 		ev := t.screen.PollEvent()
-		eventChannel <- ev
+		for _, listener := range t.Listeners {
+			listener <- ev
+		}
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
 			t.screen.Sync()

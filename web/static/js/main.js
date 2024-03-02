@@ -22,10 +22,33 @@ function updateState(cells) {
     ctx.restore()
 }
 
+function setupWS() {
+    let socket
+
+    setInterval(() => {
+        socket?.send("")
+    }, 1000)
+
+    document.addEventListener('htmx:wsOpen', (e) => {
+        socket = e.detail.socketWrapper;
+    });
+}
+
+setupWS()
 loadResizer && loadResizer()
 window.onload = loadResizer
 document.addEventListener("htmx:afterSwap", () => loadResizer())
 
 document.addEventListener("htmx:wsAfterMessage", (event) => {
-    updateState(JSON.parse(event.detail.message))
+    const { action, payload } = JSON.parse(event.detail.message)
+    switch (action) {
+        case "updateState":
+            updateState(payload)
+            return
+        case "pauseToggled":
+            {
+                const togglePauseButton = document.getElementById("togglePause")
+                togglePauseButton.innerText = payload ? "Pause" : "Play"
+            }
+    }
 })

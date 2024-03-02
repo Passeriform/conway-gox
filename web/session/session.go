@@ -20,10 +20,10 @@ type GameSessionConfiguration struct {
 }
 
 type GameSession struct {
-	Id           string
-	Game         game.Game
-	stateMux     *multiplexer.Multiplexer[cell_map.Map]
-	eventChannel chan io.SocketMessage
+	Id       string
+	Game     *game.Game
+	stateMux *multiplexer.Multiplexer[cell_map.Map]
+	eventMux *multiplexer.Multiplexer[io.SocketMessage]
 }
 
 func generateGameId() string {
@@ -34,18 +34,19 @@ func generateGameId() string {
 	return string(b)
 }
 
-func NewGameSession(initialMap cell_map.Map, eventHandler func(eventChannel <-chan io.SocketMessage, state *game.Game), config GameSessionConfiguration) GameSession {
+func NewGameSession(initialMap cell_map.Map, config GameSessionConfiguration) GameSession {
 	id := generateGameId()
-	eventChannel := make(chan io.SocketMessage)
-	newGame, stateChannel := game.New(initialMap, time.Tick(config.Tick))
-	stateMux := multiplexer.Of(stateChannel)
+	newGame, sc := game.New(initialMap, time.Tick(config.Tick))
+	stateMux := multiplexer.Of(sc)
 	go stateMux.Forward()
 	go newGame.Play()
-	go eventHandler(eventChannel, &newGame)
-	return GameSession{id, newGame, &stateMux, eventChannel}
+	return GameSession{Id: id, Game: &newGame, stateMux: &stateMux}
 }
 
-func (g *GameSession) ConnectIO(ioHandler *io.Socket) {
-	go ioHandler.Blit(g.stateMux.ProvisionSink())
-	go ioHandler.ListenEvents(g.eventChannel)
+func (g *GameSession) ConnectIO(ioSocket *io.Socket, listenerChannel <-chan io.SocketMessage, eventHandler func(<-chan io.SocketMessage)) {
+	eventMux := multiplexer.Of(listenerChannel)
+	go eventMux.Forward()
+	g.eventMux = &eventMux
+	go ioSocket.Blit(g.stateMux.ProvisionSink())
+	go eventHandler(g.eventMux.ProvisionSink())
 }
