@@ -11,12 +11,16 @@ import (
 
 	"github.com/passeriform/conway-gox/internal/cell_map"
 	"github.com/passeriform/conway-gox/internal/io"
+	"github.com/passeriform/conway-gox/internal/loader"
 	"github.com/passeriform/conway-gox/internal/patterns"
 	"github.com/passeriform/conway-gox/web/session"
 )
 
 const (
 	gameTick = 300 * time.Millisecond
+	// TODO: Fill on server load
+	// TODO: Delete directory on server close
+	savePath = ""
 )
 
 var (
@@ -187,7 +191,9 @@ func connectClientHandler(w http.ResponseWriter, r *http.Request) {
 		for e := range listener {
 			switch e.Action {
 			case "loadState":
+				gameSession.Game.LoadState(filepath.Join(savePath, gameSession.Id+".json"), 0)
 			case "saveState":
+				gameSession.Game.SaveState(filepath.Join(savePath, gameSession.Id+".json"), 0)
 			case "togglePause":
 				gameSession.Game.Running = !gameSession.Game.Running
 				ioSocket.MessageChannel <- io.SocketMessage{Action: "pauseToggled", Payload: gameSession.Game.Running}
@@ -205,6 +211,7 @@ func connectClientHandler(w http.ResponseWriter, r *http.Request) {
 
 	go ioSocket.ListenEvents()
 	go ioSocket.SendMessages()
+	// TODO: Delete game save file on last client's connection end
 }
 
 func main() {

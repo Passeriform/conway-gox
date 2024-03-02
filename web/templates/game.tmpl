@@ -12,6 +12,12 @@
         <button id="togglePause" hx-swap="none" ws-send name="action" value="togglePause">
             {{ if .Game.Running }} Pause {{ else }} Play {{ end }}
         </button>
+        <button id="save" hx-swap="none" ws-send name="action" value="saveState">
+            Save
+        </button>
+        <button id="load" hx-swap="none" ws-send name="action" value="loadState">
+            Load
+        </button>
     </div>
 </main>
 {{ end }}
