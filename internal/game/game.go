@@ -29,7 +29,7 @@ func (g *Game) Play() {
 }
 
 func (g *Game) Step() {
-	g.state.Step()
+	g.state.Next()
 	g.stateChannel <- *g.state
 }
 

@@ -20,13 +20,13 @@ type Bounds struct {
 func (m *Map) recomputeNeighbors() {
 	for current := range m.cells {
 		m.cells[current].Neighbors = []*cell.Cell{}
-		for next, nextCell := range m.cells {
+		for next := range m.cells {
 			if next == current {
 				continue
 			}
 
-			if m.cells[current].IsNeighbor(nextCell) {
-				m.cells[current].Neighbors = append(m.cells[current].Neighbors, nextCell)
+			if m.cells[current].IsNeighbor(m.cells[next]) {
+				m.cells[current].Neighbors = append(m.cells[current].Neighbors, m.cells[next])
 			}
 		}
 	}
@@ -67,7 +67,7 @@ func (m Map) GetBounds() Bounds {
 	}
 }
 
-func (m *Map) Step() {
+func (m *Map) Next() {
 	// TODO: Move to generation_processor
 	nextCells, markedForKill := utility.Partition(m.cells, func(element *cell.Cell) bool {
 		return element.WillSurvive()
@@ -112,4 +112,12 @@ func (m Map) EncodeJson(padding int) [][2]int {
 	return jsonData
 }
 
-// TODO: Implement loadState and saveState
+func DecodeJson(jb [][2]int, padding int) Map {
+	cells := make([]cell.Cell, len(jb))
+
+	for idx, cb := range jb {
+		cells[idx] = cell.New(padding+cb[0], padding+cb[1])
+	}
+
+	return FromCells(cells)
+}
