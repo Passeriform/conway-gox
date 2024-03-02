@@ -32,16 +32,15 @@ func (m *Map) recomputeNeighbors() {
 	}
 }
 
-func New() Map {
-	return Map{cells: []*cell.Cell{}}
-}
-
-func (m *Map) AddCells(c []cell.Cell) {
+func FromCells(c []cell.Cell) Map {
+	cells := make([]*cell.Cell, len(c))
 	for cellIndex := range c {
-		m.cells = append(m.cells, &c[cellIndex])
+		cells[cellIndex] = &c[cellIndex]
 	}
 
-	m.recomputeNeighbors()
+	cm := Map{cells}
+	cm.recomputeNeighbors()
+	return cm
 }
 
 func (m Map) GetCells() []*cell.Cell {

@@ -12,34 +12,58 @@ import (
 
 // TODO: Implement generic interface for all IO handlers and use in GameSession
 type Terminal struct {
-	screen    tcell.Screen
-	Listeners []chan<- tcell.Event
-	zoomLevel float64
-	once      sync.Once
+	screen          tcell.Screen
+	MessageChannel  chan cell_map.Map
+	listenerChannel chan tcell.Event
+	once            sync.Once
 }
 
 var aliveCell rune = '\u2B1C'
 
-func NewTerminal() (Terminal, error) {
+func NewTerminal() (Terminal, <-chan tcell.Event, error) {
 	tcell.SetEncodingFallback(tcell.EncodingFallbackASCII)
 
 	s, err := tcell.NewScreen()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not create an instance of the terminal screen: %v\n", err)
-		return Terminal{}, err
+		return Terminal{}, nil, err
 	}
 
 	if err := s.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "Could not initialize the terminal screen: %v\n", err)
-		return Terminal{}, err
+		return Terminal{}, nil, err
 	}
 
 	s.SetStyle(tcell.StyleDefault)
 
 	s.Clear()
 
-	return Terminal{screen: s, zoomLevel: 1}, nil
+	lChan := make(chan tcell.Event)
+	mChan := make(chan cell_map.Map)
+
+	return Terminal{screen: s, listenerChannel: lChan, MessageChannel: mChan}, lChan, nil
+}
+
+func (t *Terminal) SendMessages() {
+	defer func() {
+		t.Close()
+	}()
+
+	for message := range t.MessageChannel {
+		t.screen.Clear()
+		width, height := t.screen.Size()
+		for _, cell := range message.EncodeJson(0) {
+			t.screen.SetContent(
+				(width/2)+(2*cell[1]),
+				(height/2)+(2*cell[0]),
+				aliveCell,
+				nil,
+				tcell.StyleDefault,
+			)
+		}
+		t.screen.Show()
+	}
 }
 
 func (t *Terminal) Blit(mapChannel <-chan cell_map.Map) {
@@ -47,18 +71,9 @@ func (t *Terminal) Blit(mapChannel <-chan cell_map.Map) {
 		t.Close()
 	}()
 
-	for m := range mapChannel {
-		t.screen.Clear()
-		width, _ := t.screen.Size()
-		for _, cell := range m.EncodeJson(width / 2) {
-			t.screen.SetContent(cell[1], cell[0], aliveCell, nil, tcell.StyleDefault)
-		}
-		t.screen.Show()
+	for cm := range mapChannel {
+		t.MessageChannel <- cm
 	}
-}
-
-func (s *Terminal) AddListener(eventChannel chan<- tcell.Event) {
-	s.Listeners = append(s.Listeners, eventChannel)
 }
 
 func (t *Terminal) ListenEvents() {
@@ -68,9 +83,7 @@ func (t *Terminal) ListenEvents() {
 
 	for {
 		ev := t.screen.PollEvent()
-		for _, listener := range t.Listeners {
-			listener <- ev
-		}
+		t.listenerChannel <- ev
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
 			t.screen.Sync()
