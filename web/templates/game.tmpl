@@ -4,7 +4,7 @@
 </head>
 <main id="main" class="fade-in" hx-ext="ws" ws-connect="/connect/{{ .Id }}" hx-trigger="load">
     {{ template "heading" }}
-    <canvas id="content" class="content-block"></canvas>
+    <canvas id="content" class="canvas-block"></canvas>
     <div id="post-content" class="row content-block">
         <button hx-swap="none" ws-send name="action" value="step">
             Step Forward

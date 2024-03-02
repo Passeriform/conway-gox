@@ -32,6 +32,10 @@ main {
     min-width: 15rem;
 }
 
+.canvas-block {
+    width: 100vw;
+}
+
 .row {
     display: flex;
     flex-direction: row;
