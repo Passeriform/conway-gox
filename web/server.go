@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/passeriform/conway-gox/internal/cell_map"
 	"github.com/passeriform/conway-gox/internal/io"
 	"github.com/passeriform/conway-gox/internal/loader"
 	"github.com/passeriform/conway-gox/internal/patterns"
@@ -71,13 +70,12 @@ func getServerDir() string {
 }
 
 func spawnGame(pattern string) (session.GameSession, error) {
-	cellMap := cell_map.New()
-	cells, err := patterns.GetPrimitive(pattern, 0, 0)
+	primitive, err := loader.LoadFromPrimitive(pattern, 0)
 	if err != nil {
-		return session.GameSession{}, fmt.Errorf("unable to fetch the primitive pattern: %v", err)
+		return session.GameSession{}, fmt.Errorf("unable to load primitive pattern: %v", err)
 	}
-	cellMap.AddCells(cells)
-	return session.NewGameSession(cellMap, session.GameSessionConfiguration{Tick: gameTick}), nil
+	// TODO: Allow usage of save and load states here using game ids
+	return session.NewGameSession(primitive, session.GameSessionConfiguration{Tick: gameTick}), nil
 }
 
 func landingHandler(w http.ResponseWriter, r *http.Request) {

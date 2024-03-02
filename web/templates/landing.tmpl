@@ -7,10 +7,10 @@
     <div id="post-content" class="column content-block">
         <label for="pattern">Choose a starting pattern:</label>
         <select name="pattern">
-        {{ range $key, $value := . }}
-            <optgroup label="{{ $key }}">
-                {{ range $value }}
-                    <option value="{{ . }}">{{ . }}</option>
+        {{ range $group, $valueMap := . }}
+            <optgroup label="{{ $group }}">
+                {{ range $key, $value := $valueMap }}
+                    <option value="{{ $value }}">{{ $key }}</option>
                 {{ end }}
             </optgroup>
         {{ end }}
