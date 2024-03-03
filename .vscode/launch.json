@@ -9,14 +9,20 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/cli/cli.go"
-        }
+            "program": "${workspaceFolder}/cmd/cli/cli.go",
+            "env": {
+                "GOPATH": "${workspaceFolder}"
+            }
+        },
         {
             "name": "Web Server",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/web/server.go"
+            "program": "${workspaceFolder}/web/server.go",
+            "env": {
+                "GOPATH": "${workspaceFolder}"
+            }
         }
     ]
 }

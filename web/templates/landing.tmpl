@@ -9,8 +9,8 @@
         <select name="pattern">
         {{ range $group, $valueMap := . }}
             <optgroup label="{{ $group }}">
-                {{ range $key, $value := $valueMap }}
-                    <option value="{{ $value }}">{{ $key }}</option>
+                {{ range $valueMap }}
+                    <option value="{{ .SeedName }}">{{ .Name }}</option>
                 {{ end }}
             </optgroup>
         {{ end }}

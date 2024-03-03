@@ -28,3 +28,14 @@ func Partition[T any](slice []T, matchFunc func(T) bool) ([]T, []T) {
 
 	return matchedPartition, unmatchedPartition
 }
+
+func PartitionMany[K comparable, T any](slice []T, identityFunc func(T) K) map[K][]T {
+	partitions := make(map[K][]T)
+
+	for _, element := range slice {
+		key := identityFunc(element)
+		partitions[key] = append(partitions[key], element)
+	}
+
+	return partitions
+}

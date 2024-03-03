@@ -6,12 +6,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/passeriform/conway-gox/internal/io"
 	"github.com/passeriform/conway-gox/internal/loader"
-	"github.com/passeriform/conway-gox/internal/patterns"
 	"github.com/passeriform/conway-gox/web/session"
 )
 
@@ -30,7 +28,7 @@ var (
 func getTemplatePaths(tmplNames ...string) []string {
 	tmplPaths := make([]string, len(tmplNames))
 	for idx, name := range tmplNames {
-		tmplPaths[idx] = filepath.Join(getServerDir(), "templates", fmt.Sprintf("%v.tmpl", name))
+		tmplPaths[idx] = filepath.Join(os.Getenv("GOPATH"), "web", "templates", fmt.Sprintf("%v.tmpl", name))
 	}
 	return tmplPaths
 }
@@ -56,19 +54,6 @@ func generateTemplate(tmplName string, fnMap template.FuncMap) (*template.Templa
 	}
 }
 
-func getServerDir() string {
-	e, ok := os.LookupEnv("ENVIRONMENT")
-	if ok && e != "DEVELOPMENT" {
-		return "./"
-	}
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		fmt.Fprintln(os.Stderr, "Could not fetch runtime caller to get server directory.")
-		os.Exit(1)
-	}
-	return filepath.Dir(filename)
-}
-
 func spawnGame(pattern string) (session.GameSession, error) {
 	primitive, err := loader.LoadFromPrimitive(pattern, 0)
 	if err != nil {
@@ -84,7 +69,11 @@ func landingHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v", err)
 		os.Exit(1)
 	}
-	if err := tmpl.ExecuteTemplate(w, "shell", patterns.GetAvailablePatterns()); err != nil {
+	pm, err := loader.ScanPrimitivesByType()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "An error occurred while scanning for primitives: %v", err)
+	}
+	if err := tmpl.ExecuteTemplate(w, "shell", pm); err != nil {
 		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v", err)
 		os.Exit(1)
 	}
@@ -218,7 +207,7 @@ func main() {
 		// TODO: Implement if required
 	}()
 
-	staticFs := http.FileServer(http.Dir(filepath.Join(getServerDir(), "static")))
+	staticFs := http.FileServer(http.Dir(filepath.Join(os.Getenv("GOPATH"), "web", "static")))
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", staticFs))

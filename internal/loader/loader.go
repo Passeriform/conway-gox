@@ -2,14 +2,42 @@ package loader
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
+	"strings"
 
 	"github.com/passeriform/conway-gox/internal/cell_map"
+	"github.com/passeriform/conway-gox/internal/utility"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
+
+type PrimitiveInfo struct {
+	Type     string
+	Name     string
+	SeedName string
+	SeedPath string
+}
+
+func beautifySeedName(input string) string {
+	caseChunks := make([]string, 0)
+	strChunks := strings.FieldsFunc(input, func(r rune) bool {
+		return r == ':' ||
+			r == '-' ||
+			r == '_' ||
+			r == ' ' ||
+			r == ';' ||
+			r == '|' ||
+			r == ','
+	})
+
+	for _, chunk := range strChunks {
+		caseChunks = append(caseChunks, cases.Title(language.English).String(chunk))
+	}
+
+	return strings.Join(caseChunks, " ")
+}
 
 func LoadFromFile(fp string, padding int) (cell_map.Map, error) {
 	dat, err := os.ReadFile(fp)
@@ -39,13 +67,43 @@ func SaveToFile(cm cell_map.Map, fp string, padding int) error {
 }
 
 func LoadFromPrimitive(primitive string, padding int) (cell_map.Map, error) {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return cell_map.Map{}, errors.New("could not fetch runtime caller to get primitives directory")
+	pGlob := fmt.Sprintf("%v/*/%v.json", filepath.Join(os.Getenv("GOPATH"), "assets", "primitives"), primitive)
+	matches, err := filepath.Glob(pGlob)
+	if err != nil {
+		return cell_map.Map{}, fmt.Errorf("could not prepare glob to search for primitives: %v", err)
 	}
-	exPath := filepath.Dir(filename)
 
-	primitiveFp := filepath.Join(exPath, "primitives", fmt.Sprintf("%v.json", primitive))
+	if len(matches) == 0 {
+		return cell_map.Map{}, fmt.Errorf("could not find the requested primitive: %v", primitive)
+	}
 
-	return LoadFromFile(primitiveFp, padding)
+	return LoadFromFile(matches[0], padding)
+}
+
+func ScanPrimitives() ([]PrimitiveInfo, error) {
+	pGlob := fmt.Sprintf("%v/*/*.json", filepath.Join(os.Getenv("GOPATH"), "assets", "primitives"))
+	matches, err := filepath.Glob(pGlob)
+	if err != nil {
+		return nil, fmt.Errorf("could not prepare glob to search for primitives: %v", err)
+	}
+
+	primitives := make([]PrimitiveInfo, len(matches))
+
+	for idx, match := range matches {
+		fileName := filepath.Base(match)
+		seedName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+		primitiveType := filepath.Base(filepath.Dir(match))
+		primitives[idx] = PrimitiveInfo{primitiveType, beautifySeedName(seedName), seedName, match}
+	}
+
+	return primitives, nil
+}
+
+func ScanPrimitivesByType() (map[string][]PrimitiveInfo, error) {
+	primitives, err := ScanPrimitives()
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan primitives: %v", err)
+	}
+	pMap := utility.PartitionMany(primitives, func(el PrimitiveInfo) string { return el.Type })
+	return pMap, nil
 }
