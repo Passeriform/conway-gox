@@ -92,11 +92,11 @@ func (s *Socket) SendMessages() {
 			s.beforeWrite()
 			jsonBytes, err := json.Marshal(message)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "unable to marshal message: %v", message)
+				fmt.Fprintf(os.Stderr, "unable to marshal message: %v\n", message)
 				return
 			}
 			if err := s.conn.WriteMessage(websocket.TextMessage, jsonBytes); err != nil {
-				fmt.Fprintf(os.Stderr, "failed at writing message to the writer: %v", err)
+				fmt.Fprintf(os.Stderr, "failed at writing message to the writer: %v\n", err)
 				return
 			}
 		}
@@ -149,10 +149,10 @@ func (s *Socket) ListenEvents() {
 func (s *Socket) Close() {
 	s.once.Do(func() {
 		if err := s.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to write close message to the connection in deferred close method: %v", err)
+			fmt.Fprintf(os.Stderr, "Unable to write close message to the connection in deferred close method: %v\n", err)
 		}
 		if err := s.conn.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to close the socket connection in deferred close method: %v", err)
+			fmt.Fprintf(os.Stderr, "Unable to close the socket connection in deferred close method: %v\n", err)
 		}
 		s.done <- struct{}{}
 		s.listenerChannel <- SocketMessage{Action: "close"}

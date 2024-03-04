@@ -17,7 +17,10 @@ const (
 	gameTick = 300 * time.Millisecond
 	// TODO: Fill on server load
 	// TODO: Delete directory on server close
-	savePath = "saves"
+)
+
+var (
+	savePath = filepath.Join(os.Getenv("GOPATH"), "saves")
 )
 
 var (
@@ -66,15 +69,15 @@ func spawnGame(pattern string) (session.GameSession, error) {
 func landingHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := generateTemplate("landing", nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v", err)
+		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v\n", err)
 		os.Exit(1)
 	}
 	pm, err := loader.ScanPrimitivesByType()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "An error occurred while scanning for primitives: %v", err)
+		fmt.Fprintf(os.Stderr, "An error occurred while scanning for primitives: %v\n", err)
 	}
 	if err := tmpl.ExecuteTemplate(w, "shell", pm); err != nil {
-		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v", err)
+		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -93,12 +96,12 @@ func gameSwapHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := generateTemplate("gameSwap", nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v", err)
+		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v\n", err)
 		os.Exit(1)
 	}
 
 	if err := tmpl.ExecuteTemplate(w, "page", gameSession); err != nil {
-		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v", err)
+		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -131,13 +134,13 @@ func gameViewHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := generateTemplate("game", nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v", err)
+		fmt.Fprintf(os.Stderr, "An error occurred while generating template: %v\n", err)
 		os.Exit(1)
 	}
 
 	// TODO: Set initial state for encode JSON from template directly once sessioned games are implemented.
 	if err := tmpl.ExecuteTemplate(w, "shell", gameSession); err != nil {
-		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v", err)
+		fmt.Fprintf(os.Stderr, "An error occurred while executing template: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -149,7 +152,7 @@ func newGameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	game, err := spawnGame(pattern)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to spawn a new game: %v", err)
+		fmt.Fprintf(os.Stderr, "Unable to spawn a new game: %v\n", err)
 		http.Error(w, fmt.Sprintf("Could not initialize game: %v", err), http.StatusInternalServerError)
 	}
 	games[game.Id] = &game

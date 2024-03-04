@@ -58,10 +58,16 @@ func SaveToFile(cm cell_map.Map, fp string, padding int) error {
 	}
 
 	if _, err := os.Stat(fp); err == nil {
-		fmt.Printf("Existing save file found at %v. Will be overwritten.", fp)
+		fmt.Fprintf(os.Stdout, "Existing save file found at %v. Will be overwritten.\n", fp)
 	}
 
-	os.WriteFile(fp, wb, 0644)
+	if err := os.MkdirAll(filepath.Dir(fp), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Couldn't create save file directory %v\n", err)
+	}
+
+	if err := os.WriteFile(fp, wb, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Couldn't write to save file %v\n", err)
+	}
 
 	return nil
 }
