@@ -46,10 +46,7 @@ func NewTerminal() (Terminal, <-chan tcell.Event, error) {
 }
 
 func (t *Terminal) SendMessages() {
-	defer func() {
-		t.Close()
-	}()
-
+	defer t.Close()
 	for message := range t.MessageChannel {
 		t.screen.Clear()
 		width, height := t.screen.Size()
@@ -67,20 +64,14 @@ func (t *Terminal) SendMessages() {
 }
 
 func (t *Terminal) Blit(mapChannel <-chan cell_map.Map) {
-	defer func() {
-		t.Close()
-	}()
-
+	defer t.Close()
 	for cm := range mapChannel {
 		t.MessageChannel <- cm
 	}
 }
 
 func (t *Terminal) ListenEvents() {
-	defer func() {
-		t.Close()
-	}()
-
+	defer t.Close()
 	for {
 		ev := t.screen.PollEvent()
 		t.listenerChannel <- ev

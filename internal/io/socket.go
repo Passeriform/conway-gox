@@ -35,6 +35,7 @@ type Socket struct {
 	conn            *websocket.Conn
 	MessageChannel  chan SocketMessage
 	listenerChannel chan SocketMessage
+	done            chan struct{}
 	once            sync.Once
 }
 
@@ -45,8 +46,7 @@ func NewSocket(w http.ResponseWriter, r *http.Request) (Socket, <-chan SocketMes
 		return Socket{}, nil, err
 	}
 	lChan := make(chan SocketMessage)
-	mChan := make(chan SocketMessage)
-	return Socket{conn: conn, listenerChannel: lChan, MessageChannel: mChan}, lChan, nil
+	return Socket{conn: conn, MessageChannel: make(chan SocketMessage), listenerChannel: lChan, done: make(chan struct{})}, lChan, nil
 }
 
 func (s *Socket) beforeRead() {
@@ -80,58 +80,69 @@ func (s *Socket) beforeWrite() {
 }
 
 func (s *Socket) SendMessages() {
-	defer func() {
-		s.Close()
-	}()
-
-	for message := range s.MessageChannel {
-		s.beforeWrite()
-		jsonBytes, err := json.Marshal(message)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "unable to marshal message: %v", message)
+	defer s.Close()
+	for {
+		select {
+		case <-s.done:
 			return
-		}
-		if err := s.conn.WriteMessage(websocket.TextMessage, jsonBytes); err != nil {
-			fmt.Fprintf(os.Stderr, "failed at writing message to the writer: %v", err)
-			return
+		case message, ok := <-s.MessageChannel:
+			if !ok {
+				return
+			}
+			s.beforeWrite()
+			jsonBytes, err := json.Marshal(message)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "unable to marshal message: %v", message)
+				return
+			}
+			if err := s.conn.WriteMessage(websocket.TextMessage, jsonBytes); err != nil {
+				fmt.Fprintf(os.Stderr, "failed at writing message to the writer: %v", err)
+				return
+			}
 		}
 	}
 }
 
 func (s *Socket) Blit(mapChannel <-chan cell_map.Map) {
-	defer func() {
-		s.Close()
-	}()
-
-	for cm := range mapChannel {
-		s.MessageChannel <- SocketMessage{"updateState", cm.EncodeJson(0)}
+	defer s.Close()
+	for {
+		select {
+		case <-s.done:
+			return
+		case cm, ok := <-mapChannel:
+			if !ok {
+				return
+			}
+			s.MessageChannel <- SocketMessage{"updateState", cm.EncodeJson(0)}
+		}
 	}
 }
 
 func (s *Socket) ListenEvents() {
-	defer func() {
-		s.Close()
-	}()
-
+	defer s.Close()
 	for {
-		s.beforeRead()
-		_, message, err := s.conn.ReadMessage()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to read message on socket: %v\n", err)
+		select {
+		case <-s.done:
 			return
+		default:
+			s.beforeRead()
+			_, message, err := s.conn.ReadMessage()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to read message on socket: %v\n", err)
+				return
+			}
+			if len(message) == 0 {
+				fmt.Println("Received a heartbeat message.")
+				s.listenerChannel <- SocketMessage{Action: "heartbeat"}
+				continue
+			}
+			var messageObject SocketMessage
+			if err := json.Unmarshal(message, &messageObject); err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to unmarshal message: %v\n", message)
+				return
+			}
+			s.listenerChannel <- messageObject
 		}
-		if len(message) == 0 {
-			fmt.Println("Received a heartbeat message.")
-			s.listenerChannel <- SocketMessage{Action: "heartbeat"}
-			continue
-		}
-		var messageObject SocketMessage
-		if err := json.Unmarshal(message, &messageObject); err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to unmarshal message: %v\n", message)
-			return
-		}
-
-		s.listenerChannel <- messageObject
 	}
 }
 
@@ -143,5 +154,7 @@ func (s *Socket) Close() {
 		if err := s.conn.Close(); err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to close the socket connection in deferred close method: %v", err)
 		}
+		s.done <- struct{}{}
+		s.listenerChannel <- SocketMessage{Action: "close"}
 	})
 }

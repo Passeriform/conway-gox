@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/passeriform/conway-gox/internal/cell_map"
@@ -13,20 +14,28 @@ type Game struct {
 	Running      bool
 	Tick         <-chan time.Time
 	stateChannel chan<- cell_map.Map
+	done         chan struct{}
+	once         sync.Once
 }
 
 func New(m cell_map.Map, t <-chan time.Time) (Game, chan cell_map.Map) {
 	sc := make(chan cell_map.Map)
-	return Game{&m, false, t, sc}, sc
+	return Game{state: &m, Running: false, Tick: t, stateChannel: sc, done: make(chan struct{})}, sc
 }
 
 func (g *Game) Play() {
+	defer g.Close()
 	g.Running = true
-	for range g.Tick {
-		if !g.Running {
-			continue
+	for {
+		select {
+		case <-g.done:
+			return
+		case <-g.Tick:
+			if !g.Running {
+				continue
+			}
+			g.Step()
 		}
-		g.Step()
 	}
 }
 
@@ -50,6 +59,14 @@ func (g *Game) LoadState(saveFp string, padding int) error {
 	g.state = &state
 	g.stateChannel <- *g.state
 	return nil
+}
+
+func (g *Game) Close() {
+	g.once.Do(func() {
+		g.Running = false
+		close(g.stateChannel)
+		g.done <- struct{}{}
+	})
 }
 
 // TODO: Add close method with sync.once, ensure stateChannel is not listened to once closed

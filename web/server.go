@@ -17,7 +17,7 @@ const (
 	gameTick = 300 * time.Millisecond
 	// TODO: Fill on server load
 	// TODO: Delete directory on server close
-	savePath = ""
+	savePath = "saves"
 )
 
 var (
@@ -190,6 +190,8 @@ func connectClientHandler(w http.ResponseWriter, r *http.Request) {
 					ioSocket.MessageChannel <- io.SocketMessage{Action: "pauseToggled", Payload: gameSession.Game.Running}
 				}
 				gameSession.Game.Step()
+			case "close":
+				gameSession.SignalClose(&ioSocket)
 			}
 		}
 	}

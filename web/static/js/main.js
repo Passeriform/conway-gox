@@ -10,6 +10,8 @@ function loadResizer() {
     observer.observe(canvas)
 }
 
+// TODO: Add a state restore timeout on resize that can be cancelled if a new update came through
+
 function updateState(cells) {
     const cellSize = 20
     const canvas = document.querySelector("canvas#content")
