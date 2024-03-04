@@ -10,8 +10,10 @@ FROM scratch
 WORKDIR /app
 ENV ENVIRONMENT PRODUCTION
 ENV PORT 8080
+ENV GOPATH .
 COPY --from=builder /build/server .
-COPY --from=builder /build/web/static ./static
-COPY --from=builder /build/web/templates ./templates
+COPY --from=builder /build/assets ./assets
+COPY --from=builder /build/web/static ./web/static
+COPY --from=builder /build/web/templates ./web/templates
 EXPOSE 8080
 CMD ["./server"]
