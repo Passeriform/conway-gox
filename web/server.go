@@ -148,7 +148,7 @@ func gameViewHandler(w http.ResponseWriter, r *http.Request) {
 func newGameHandler(w http.ResponseWriter, r *http.Request) {
 	pattern := r.URL.Query().Get("pattern")
 	if pattern == "" {
-		pattern = "PentaDecathlon"
+		pattern = "penta_decathlon"
 	}
 	game, err := spawnGame(pattern)
 	if err != nil {
