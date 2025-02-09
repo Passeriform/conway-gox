@@ -1,5 +1,5 @@
 FROM golang:latest as builder
-LABEL maintainer="Utkarsh Bhardwaj (Passeriform) <bhardwajutkars.ub@gmail.com>"
+LABEL maintainer="Utkarsh Bhardwaj (Passeriform) <bhardwajutkarsh.ub@gmail.com>"
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
